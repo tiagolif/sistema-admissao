@@ -116,8 +116,12 @@ def gerar_word(dados_formulario, dados_uploads):
 
 # --- FUNÇÃO PARA ENVIAR O E-MAIL ---
 def enviar_email(pdf_content, word_content, nome_candidato, dados_imagens):
+    senha = None  # Inicializa senha para garantir que exista no escopo do except
     try:
-        remetente = st.secrets["email"]["remetente"]; senha = st.secrets["email"]["senha"]; destinatario = st.secrets["email"]["destinatario"]
+        remetente = st.secrets["email"]["remetente"]
+        senha = st.secrets["email"]["senha"] # Atribuição real da senha
+        destinatario = st.secrets["email"]["destinatario"]
+        
         msg = MIMEMultipart()
         msg["From"] = remetente; msg["To"] = destinatario; msg["Subject"] = f"Nova Admissão: {nome_candidato}"
         msg.attach(MIMEText(f"Olá,\n\nSegue em anexo a ficha de admissão preenchida por {nome_candidato} (PDF e DOCX).\n\nAtenciosamente,\nSistema de Admissão Automático", "plain"))
@@ -141,7 +145,10 @@ def enviar_email(pdf_content, word_content, nome_candidato, dados_imagens):
         server.sendmail(remetente, destinatario, msg.as_string()); server.quit()
         return True, None
     except Exception as e:
-        return False, str(e).replace(senha, "****") if senha else str(e)
+        erro_msg = str(e)
+        if senha: # Só tenta substituir se a senha foi lida com sucesso
+             erro_msg = erro_msg.replace(senha, "****")
+        return False, erro_msg
 
 # --- LAYOUT E ROTEAMENTO DO WIZARD ---
 st.image('logo.png', width=200)
