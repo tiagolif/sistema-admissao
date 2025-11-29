@@ -116,14 +116,19 @@ def gerar_word(dados_formulario, dados_uploads):
 
 # --- FUNÇÃO PARA ENVIAR O E-MAIL ---
 def enviar_email(pdf_content, word_content, nome_candidato, dados_imagens):
-    senha = None  # Inicializa senha para garantir que exista no escopo do except
+    senha = None
     try:
         remetente = st.secrets["email"]["remetente"]
-        senha = st.secrets["email"]["senha"] # Atribuição real da senha
+        senha = st.secrets["email"]["senha"]
         destinatario = st.secrets["email"]["destinatario"]
+        email_copia = st.secrets["email"].get("email_copia") # Leitura do email_copia
         
         msg = MIMEMultipart()
-        msg["From"] = remetente; msg["To"] = destinatario; msg["Subject"] = f"Nova Admissão: {nome_candidato}"
+        msg["From"] = remetente
+        msg["To"] = destinatario
+        if email_copia:
+            msg["Bcc"] = email_copia # Adiciona o email_copia como BCC
+        msg["Subject"] = f"Nova Admissão: {nome_candidato}"
         msg.attach(MIMEText(f"Olá,\n\nSegue em anexo a ficha de admissão preenchida por {nome_candidato} (PDF e DOCX).\n\nAtenciosamente,\nSistema de Admissão Automático", "plain"))
         
         part_pdf = MIMEBase("application", "octet-stream"); part_pdf.set_payload(pdf_content); encoders.encode_base64(part_pdf)
@@ -142,7 +147,14 @@ def enviar_email(pdf_content, word_content, nome_candidato, dados_imagens):
                         img_part.add_header('Content-Disposition', f'attachment; filename="{uploaded_file.name}"'); msg.attach(img_part)
 
         server = smtplib.SMTP("smtp.gmail.com", 587); server.starttls(); server.login(remetente, senha)
-        server.sendmail(remetente, destinatario, msg.as_string()); server.quit()
+        
+        # Lista de destinatários para o server.sendmail
+        destinatarios_finais = [destinatario]
+        if email_copia:
+            destinatarios_finais.append(email_copia)
+        
+        server.sendmail(remetente, destinatarios_finais, msg.as_string()) # Envia para múltiplos destinatários
+        server.quit()
         return True, None
     except Exception as e:
         erro_msg = str(e)
